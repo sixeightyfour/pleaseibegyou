@@ -2,15 +2,16 @@
 <html>
 <head>
 <meta charset="utf-8">
-<title>3D Graph with Positions</title>
+<title>3D Graph with Positions and Edges</title>
 
 <style>
 body { margin:0; overflow:hidden; }
 #graph { width:100vw; height:100vh; }
 </style>
 
-<script src="https://unpkg.com/three"></script>
-<script src="https://unpkg.com/3d-force-graph"></script>
+<!-- Browser-ready builds -->
+<script src="https://unpkg.com/three@0.161.0/build/three.min.js"></script>
+<script src="https://unpkg.com/3d-force-graph@1.78.0/dist/3d-force-graph.min.js"></script>
 </head>
 
 <body>
@@ -19,10 +20,10 @@ body { margin:0; overflow:hidden; }
 <script>
 const Graph = ForceGraph3D()(document.getElementById('graph'));
 
-// Load both files
+// Load graph JSON + positions text
 Promise.all([
-  fetch('graph_clean (1).json').then(res => res.json()),
-  fetch('backup_positions.txt').then(res => res.text())
+  fetch('graph_clean.json').then(res => res.json()),
+  fetch('node_positions.txt').then(res => res.text())
 ])
 .then(([graphData, positionsText]) => {
 
@@ -35,28 +36,67 @@ Promise.all([
 
   // Merge positions into nodes
   const nodes = graphData.nodes.map(n => {
-    if(positions[n.id]) {
-      return { ...n, ...positions[n.id] };
-    }
+    if (positions[n.id]) return { ...n, ...positions[n.id] };
     return n;
   });
 
-  // Set graph data
   Graph.graphData({ nodes, links: graphData.links });
 
-  // Render with sprites for performance
+  // ----------------------------
+  // Node rendering
+  // ----------------------------
   Graph.nodeThreeObject(() => new THREE.Sprite(
     new THREE.SpriteMaterial({ color: 0xffffff })
   ));
   Graph.nodeRelSize(2);
   Graph.nodeOpacity(0.9);
 
-  // Optional: hide edges for speed
-  Graph.linkWidth(0);
-  Graph.linkOpacity(0);
+  // ----------------------------
+  // Edge rendering (thin + transparent)
+  // ----------------------------
+  Graph.linkWidth(0.5);
+  Graph.linkOpacity(0.1);
+  Graph.linkColor(() => 'rgba(255,255,255,0.1)');
+
+  // ----------------------------
+  // Physics
+  // ----------------------------
+  Graph.d3Force('charge').strength(-900);
+  Graph.d3Force('link').distance(250);
+  Graph.d3Force('center', null);
+  Graph.d3VelocityDecay(0.35);
+  Graph.cooldownTicks(Infinity);
 
   // Camera back
   Graph.cameraPosition({ z: 12000 });
+
+  // ----------------------------
+  // Save positions back into JSON
+  // ----------------------------
+  function savePositionsJSON(filename="graph_with_positions.json") {
+    // Clone original graphData to avoid modifying in-place
+    const graphCopy = {
+      nodes: Graph.graphData().nodes.map(n => ({ ...n })),
+      links: Graph.graphData().links.map(l => ({ ...l }))
+    };
+
+    const blob = new Blob([JSON.stringify(graphCopy, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+
+    URL.revokeObjectURL(url);
+    console.log("Saved graph JSON:", filename);
+  }
+
+  // Backup every 5 minutes
+  setInterval(() => savePositionsJSON("backup_graph.json"), 300000);
+
+  // Final save after 30 minutes
+  setTimeout(() => savePositionsJSON("final_graph.json"), 1800000);
 
 });
 </script>
