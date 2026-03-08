@@ -9,7 +9,7 @@ body { margin:0; overflow:hidden; }
 #graph { width:100vw; height:100vh; }
 </style>
 
-<!-- Browser-ready builds -->
+<!-- Correct browser-ready builds -->
 <script src="https://unpkg.com/three@0.161.0/build/three.min.js"></script>
 <script src="https://unpkg.com/3d-force-graph@1.78.0/dist/3d-force-graph.min.js"></script>
 </head>
@@ -20,14 +20,14 @@ body { margin:0; overflow:hidden; }
 <script>
 const Graph = ForceGraph3D()(document.getElementById('graph'));
 
-// Load graph JSON + positions text
+// Load graph JSON + positions text (make sure these files are in the same folder as index.html)
 Promise.all([
   fetch('graph_clean (1).json').then(res => res.json()),
   fetch('backup_positions.txt').then(res => res.text())
 ])
 .then(([graphData, positionsText]) => {
 
-  // Parse positions
+  // Parse positions from TXT
   const positions = {};
   positionsText.split("\n").forEach(line => {
     const [id, x, y, z] = line.trim().split(",");
@@ -35,10 +35,7 @@ Promise.all([
   });
 
   // Merge positions into nodes
-  const nodes = graphData.nodes.map(n => {
-    if (positions[n.id]) return { ...n, ...positions[n.id] };
-    return n;
-  });
+  const nodes = graphData.nodes.map(n => positions[n.id] ? { ...n, ...positions[n.id] } : n);
 
   Graph.graphData({ nodes, links: graphData.links });
 
@@ -52,7 +49,7 @@ Promise.all([
   Graph.nodeOpacity(0.9);
 
   // ----------------------------
-  // Edge rendering (thin + transparent)
+  // Edge rendering
   // ----------------------------
   Graph.linkWidth(0.5);
   Graph.linkOpacity(0.1);
@@ -71,10 +68,9 @@ Promise.all([
   Graph.cameraPosition({ z: 12000 });
 
   // ----------------------------
-  // Save positions back into JSON
+  // Save positions into JSON
   // ----------------------------
   function savePositionsJSON(filename="graph_with_positions.json") {
-    // Clone original graphData to avoid modifying in-place
     const graphCopy = {
       nodes: Graph.graphData().nodes.map(n => ({ ...n })),
       links: Graph.graphData().links.map(l => ({ ...l }))
