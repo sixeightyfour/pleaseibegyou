@@ -21,8 +21,8 @@ const Graph = ForceGraph3D()(document.getElementById('graph'));
 
 // Load both files
 Promise.all([
-  fetch('graph_clean.json').then(res => res.json()),
-  fetch('node_positions.txt').then(res => res.text())
+  fetch('graph_clean (1).json').then(res => res.json()),
+  fetch('backup_positions.txt').then(res => res.text())
 ])
 .then(([graphData, positionsText]) => {
 
