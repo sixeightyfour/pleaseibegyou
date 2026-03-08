@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>3D Graph with Positions</title>
+
+<style>
+body { margin:0; overflow:hidden; }
+#graph { width:100vw; height:100vh; }
+</style>
+
+<script src="https://unpkg.com/three"></script>
+<script src="https://unpkg.com/3d-force-graph"></script>
+</head>
+
+<body>
+<div id="graph"></div>
+
+<script>
+const Graph = ForceGraph3D()(document.getElementById('graph'));
+
+// Load both files
+Promise.all([
+  fetch('graph_clean.json').then(res => res.json()),
+  fetch('node_positions.txt').then(res => res.text())
+])
+.then(([graphData, positionsText]) => {
+
+  // Parse positions
+  const positions = {};
+  positionsText.split("\n").forEach(line => {
+    const [id, x, y, z] = line.trim().split(",");
+    positions[id] = { x: +x, y: +y, z: +z };
+  });
+
+  // Merge positions into nodes
+  const nodes = graphData.nodes.map(n => {
+    if(positions[n.id]) {
+      return { ...n, ...positions[n.id] };
+    }
+    return n;
+  });
+
+  // Set graph data
+  Graph.graphData({ nodes, links: graphData.links });
+
+  // Render with sprites for performance
+  Graph.nodeThreeObject(() => new THREE.Sprite(
+    new THREE.SpriteMaterial({ color: 0xffffff })
+  ));
+  Graph.nodeRelSize(2);
+  Graph.nodeOpacity(0.9);
+
+  // Optional: hide edges for speed
+  Graph.linkWidth(0);
+  Graph.linkOpacity(0);
+
+  // Camera back
+  Graph.cameraPosition({ z: 12000 });
+
+});
+</script>
+</body>
+</html>
